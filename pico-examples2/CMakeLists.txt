@@ -1,50 +1,62 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.13)
 
-# Pull in SDK (must be before project)
-include(pico_sdk_import.cmake)
-include(pico_extras_import_optional.cmake)
+# 1) Choose whether we're building for Pico (ARM) or host only
+option(BUILD_PICO "Build the RP2040 firmware target" ON)
 
-project(pico_examples C CXX ASM)
+# 2) If Pico build, import SDK *before* project() so the toolchain can register ASM etc.
+if(BUILD_PICO)
+    include(pico_sdk_import.cmake)
+endif()
 
+# 3) Project declaration with the proper languages
+#    - If Pico, we need ASM; if host-only, we skip ASM to stay native.
+if(BUILD_PICO)
+    project(forth_project LANGUAGES C CXX ASM)
+else()
+    project(forth_project LANGUAGES C CXX)
+endif()
+
+# 4) If Pico build, now initialize the SDK (sets up arm-none-eabi compilers)
+if(BUILD_PICO)
+    pico_sdk_init()
+endif()
+
+# 5) Common settings
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
-set(PICO_EXAMPLES_PATH ${PROJECT_SOURCE_DIR})
+# ----- Core library (always built with whichever compiler is active) -----
+add_library(forth_core STATIC
+    src/forth_core.c
+)
+target_include_directories(forth_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
-# If you want debug output from USB (pass -DPICO_STDIO_USB=1) this ensures you don't lose any debug output while USB is set up
-if (NOT DEFINED PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS)
-    set(PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS 3000)
+# ----- Host executable (built with host toolchain) -----
+add_executable(forth_host
+    src/forth_host.c
+)
+target_link_libraries(forth_host PRIVATE
+    forth_core
+)
+
+# ----- Pico executable (only if BUILD_PICO=ON) -----
+if(BUILD_PICO)
+    add_executable(forth_pico
+        src/pico_main.c
+    )
+    target_link_libraries(forth_pico PRIVATE
+        pico_stdlib
+        forth_core
+    )
+    pico_add_extra_outputs(forth_pico)
 endif()
 
-# Initialize the SDK
-pico_sdk_init()
+# ----- Python black-box tests -----
+enable_testing()
+add_test(NAME forth-blackbox
+         COMMAND pytest --maxfail=1 --disable-warnings -q
+                 ${CMAKE_SOURCE_DIR}/tests
+)
 
-include(example_auto_set_url.cmake)
-
-function(add_subdirectory_exclude_platforms NAME)
-    if (ARGN)
-        if (PICO_PLATFORM IN_LIST ARGN)
-            message("Skipping ${NAME} example which is unsupported on this platform")
-            return()
-        endif()
-        foreach(PATTERN IN LISTS ARGN)
-            string(REGEX MATCH "${PATTERN}" MATCHED "${PICO_PLATFORM}")
-            if (MATCHED)
-                message("Skipping ${NAME} example which is unsupported on this platform")
-                return()
-            endif()
-        endforeach()
-    endif()
-    add_subdirectory(${NAME})
-endfunction()
-
-# Add hello world example
-add_subdirectory_exclude_platforms(hello_world)
-
-add_compile_options(-Wall
-        -Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
-        -Wno-unused-function # we have some for the docs that aren't called
-        )
-if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    add_compile_options(-Wno-maybe-uninitialized)
-endif()
