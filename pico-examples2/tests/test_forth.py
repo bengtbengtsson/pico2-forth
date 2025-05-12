@@ -27,7 +27,7 @@ def run_line(line):
     os.write(master_fd, (line + "\n").encode())
 
     output = []
-    timeout = 1.0  # max read time
+    timeout = 1.0
     start = time.time()
     ok_prompt_count = 0
 
@@ -39,7 +39,7 @@ def run_line(line):
                 output.append(data)
                 ok_prompt_count += data.count("ok>")
                 if ok_prompt_count >= 2:
-                    break  # assume prompt appears twice: startup + after response
+                    break
             except OSError:
                 break
 
@@ -48,16 +48,12 @@ def run_line(line):
     proc.kill()
 
     full_output = "".join(output)
-    print(f"\n[DEBUG] Input: {line}")
-    print("[DEBUG] Full PTY output:")
-    print(full_output)
-
-    # Extract last meaningful line
     lines = [l.strip() for l in full_output.splitlines() if l.strip()]
     cleaned = [l for l in lines if not l.startswith("ok>") and l != line and not l.startswith("Simple Forth")]
 
     return cleaned[-1] if cleaned else ""
 
+# Basic tests
 def test_simple_addition():
     assert run_line("1 2 + .") == "3"
 
@@ -72,4 +68,30 @@ def test_over_behavior():
 def test_underflow():
     err = run_line("+")
     assert "requires 2 items" in err
+
+# Memory tests (! and @)
+def test_store_and_fetch():
+    assert run_line("42 100 ! 100 @ .") == "42"
+
+def test_overwrite_store():
+    assert run_line("1 200 ! 2 200 ! 200 @ .") == "2"
+
+def test_fetch_default():
+    assert run_line("300 @ .") == "0"
+
+def test_store_negative_address():
+    err = run_line("123 -1 !")
+    assert "invalid store address" in err
+
+def test_fetch_invalid_address():
+    err = run_line("-5 @")
+    assert "invalid fetch address" in err
+
+def test_store_underflow():
+    err = run_line("42 !")
+    assert "requires 2 items" in err
+
+def test_fetch_underflow():
+    err = run_line("@")
+    assert "requires 1 item" in err
 

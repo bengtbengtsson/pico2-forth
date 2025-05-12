@@ -47,6 +47,17 @@ if(BUILD_PICO)
         src/pico_main.c
     )
     target_link_libraries(forth_pico PRIVATE
+    pico_stdlib
+    forth_core
+    )
+
+    # Add this to enable stdio over USB and bring in headers
+    pico_enable_stdio_usb(forth_pico 1)
+    pico_enable_stdio_uart(forth_pico 0)
+
+    pico_add_extra_outputs(forth_pico)
+
+    target_link_libraries(forth_pico PRIVATE
         pico_stdlib
         forth_core
     )
