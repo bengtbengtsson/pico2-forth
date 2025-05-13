@@ -53,17 +53,22 @@ def run_line(line):
 
     return cleaned[-1] if cleaned else ""
 
-# Basic tests
+# ========================== TESTS ===============================
+
 def test_simple_addition():
     assert run_line("1 2 + .") == "3"
 
 def test_dup_and_dots():
-    rst = run_line("1 2 dup .s")
-    assert rst.startswith("<3>")
-    assert rst.endswith("1 2 2")
+    output = run_line("1 2 DUP .s")
+    print(f"[TEST OUTPUT] {output!r}")
+    assert output.startswith("<3>")
+    assert output.endswith("1 2 2")
 
 def test_over_behavior():
-    assert run_line("1 2 3 over .s").startswith("<4> 1 2 3 2")
+    output = run_line("1 2 3 OVER .s")
+    print(f"[TEST OUTPUT] {output!r}")
+    assert output.startswith("<4>")
+    assert output.endswith("1 2 3 2")
 
 def test_underflow():
     err = run_line("+")
@@ -94,4 +99,14 @@ def test_store_underflow():
 def test_fetch_underflow():
     err = run_line("@")
     assert "requires 1 item" in err
+
+# Variable and Constant tests
+def test_constant_definition():
+    assert run_line("99 CONSTANT answer answer .") == "99"
+
+def test_variable_definition_and_store():
+    assert run_line("VARIABLE x 123 x ! x @ .") == "123"
+
+def test_variable_multiple():
+    assert run_line("VARIABLE a VARIABLE b 77 a ! 88 b ! a @ .") == "77"
 

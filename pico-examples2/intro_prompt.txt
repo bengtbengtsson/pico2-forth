@@ -1,0 +1,36 @@
+I'm working on a minimal Forth interpreter written in C, targeting both macOS (for testing) and the Raspberry Pi Pico 2 (RP2040). The code is organized into a shared forth_core.c file with platform-specific entry points for forth_host (macOS) and forth_pico (bare-metal). The project uses CMake to manage dual-target builds and supports unit tests using pytest with a PTY-based wrapper that simulates REPL input.
+
+What's implemented so far:
+Phase 1: Stack operations and memory access (+, !, @)
+
+Phase 2: VARIABLE and CONSTANT support with emulated RAM and dictionary
+
+Fully tested using Python + pytest
+
+Tests launch forth_host as a subprocess to ensure isolated stack state
+
+The interpreter uses classic Forth-style uppercase matching for word lookup
+
+Output buffering has been addressed via fflush(stdout) where needed
+
+No runtime memory allocation (except strdup for dictionary names)
+
+No #ifdef between platforms — host and embedded share identical core code
+
+Contribution rules:
+Do not alter the project structure or file layout unless explicitly requested or approved.
+
+All proposed changes must be returned as inline patches in the chat (diff-style or full updated file).
+
+I will review and apply changes manually — this ensures I stay in control of the implementation.
+
+Keep responses focused, minimal, and compatible with ANSI C for embedded constraints.
+
+I want help with:
+Designing and implementing Phase 3: colon definitions (:, ;), word headers, and runtime threading
+
+Continuing to write portable, testable, and minimal C code
+
+Keeping the interpreter classic and educational (no external libraries, no cheating)
+
+Maintaining testability from macOS without compromising the embedded build
