@@ -71,7 +71,9 @@ To start a session:
 
 Replace `/dev/tty.usbmodemXXXX` with the actual device path (you can list devices with `ls /dev/tty.*`).
 
-You should see the `ok>` prompt and be able to enter Forth commands. To exit minicom, press `Ctrl-A` then `Z`, then `X`.
+You should see the `ok>` prompt and be able to enter Forth commands. To exit minicom, press `Ctrl-A` then `Z`, then `X`. The `Ctrl-A` is sometimes an issue on macos, try to remap to `Ctrl-G`, using:
+
+    minicom -s
 
 Make sure `stdio_usb` is enabled in your firmware with `pico_enable_stdio_usb(...)` in your `CMakeLists.txt`.
 
