@@ -26,4 +26,47 @@ src/
 
 tests/
 └── test_forth.py        # PTY-based test runner using pytest
+```
 
+---
+
+## 🛠 Prerequisites
+
+### 📦 Pico SDK Setup
+
+To build the firmware for Raspberry Pi Pico 2, you need to install and configure the official [pico-sdk](https://github.com/raspberrypi/pico-sdk):
+
+```sh
+# Clone the SDK repository
+git clone https://github.com/raspberrypi/pico-sdk.git
+
+# Initialize submodules (required for TinyUSB and other components)
+cd pico-sdk
+git submodule update --init
+```
+
+You can then either:
+- Set the environment variable `PICO_SDK_PATH` to the path of the SDK (e.g., `export PICO_SDK_PATH=~/pico-sdk`)
+- Or copy the SDK into your project and reference it from `CMakeLists.txt`
+
+
+---
+
+### 🍎 macOS Toolchain (Homebrew)
+
+To build the native and Pico targets on macOS, install the required packages:
+
+```sh
+brew install cmake
+brew install arm-none-eabi-gcc
+brew install python
+brew install pytest
+```
+
+> ✅ `arm-none-eabi-gcc` is the cross-compiler used for building code for the RP2040.
+
+Make sure the compiler is available in your path:
+
+```sh
+arm-none-eabi-gcc --version
+```
