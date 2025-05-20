@@ -252,3 +252,10 @@ def test_emit_and_cr():
     assert run_line("65 EMIT") == "A"
     assert run_line(".CR") == ""  # prints a newline only
 
+def test_emit_prints_ascii_characters():
+    assert run_line("65 EMIT") == "A"       # 'A'
+    assert run_line("33 EMIT") == "!"      # newline (LF)
+    assert run_line("48 EMIT") == "0"       # ASCII '0'
+
+def test_cr_prints_newline():
+    assert run_line(".CR") == ""            # only outputs a newline
