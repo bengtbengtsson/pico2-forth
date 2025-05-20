@@ -17,6 +17,16 @@
 #define CONST_LIMIT 32
 #define VAR_BASE 100 /* first free RAM-cell for VARIABLES */
 
+#define THREAD_MAX 512           /* unified code space               */
+#define OP_LIT     -1            /* marker  LIT   <value>            */
+#define OP_EXIT    -2            /* marker  EXIT  ( ; )              */
+
+static int   thread[THREAD_MAX];
+static int   thread_len = 0;     /* next free cell in thread[]       */
+static int   colon_ip[128];      /* dict-index → start ip            */
+static int   compiling = 0;      /* true between : … ;               */
+static int   current_def_idx = -1;
+
 static long stack[STACK_SIZE];
 static int sp = 0;
 static long memory[MEM_SIZE];
@@ -54,6 +64,61 @@ static long pop() {
     printf("Error: stack underflow\r\n");
     return 0;
 }
+
+/* ---------------- helpers for colon compilation ----------- */
+static void compile_word(const char *tok)
+{
+    /* 1. numeric literal → LIT value ----------------------- */
+    char *end;
+    long v = strtol(tok, &end, 10);
+    if (*end == '\0') {
+        if (thread_len + 2 >= THREAD_MAX) { printf("Error: thread overflow\r\n"); return; }
+        thread[thread_len++] = OP_LIT;
+        thread[thread_len++] = (int)v;
+        return;
+    }
+
+    /* 2. previously known word → dict-index ---------------- */
+    for (int i = 0; i < dict_len; i++) {
+        if (strcmp(tok, dict[i].name) == 0) {
+            if (thread_len >= THREAD_MAX) { printf("Error: thread overflow\r\n"); return; }
+            thread[thread_len++] = i;
+            return;
+        }
+    }
+    printf("? %s\r\n", tok);   /* unknown at compile-time */
+}
+
+/* ---------------- runtime for colon words ----------------- */
+static void colon_dispatch(void)
+{
+    int idx = -1;
+    for (int i = 0; i < dict_len; i++)
+        if (dict[i].name == current_lookup_word) { idx = i; break; }
+    if (idx < 0) { printf("Error: colon dispatch\n"); return; }
+
+    int ip = colon_ip[idx];
+    for (;;) {
+        int code = thread[ip++];
+        if (code == OP_EXIT) break;
+        if (code == OP_LIT)  { push(thread[ip++]); continue; }
+
+        current_lookup_word = dict[code].name;
+        if (dict[code].fn) {
+            dict[code].fn();              /* primitive / constant   */
+        } else {
+            /* variable   (fn == NULL) --------------------------- */
+            for (int j = 0; j < var_count; j++)
+                if (strcmp(current_lookup_word, vars[j].name) == 0) {
+                    push(vars[j].addr);
+                    goto next;
+                }
+            printf("Error: unresolved word %s\r\n", current_lookup_word);
+        }
+    next:;
+    }
+}
+
 
 /* -------------------------------------------------------------------------
  *--- Floored division helper (ANS Forth semantics)
@@ -220,6 +285,27 @@ static void eval(const char *tok) {
     if (len >= WORD_BUF) len = WORD_BUF - 1;
     strncpy(uword, tok, len);
     uword[len] = '\0';
+
+    if (compiling) {                      /* inside a definition  */
+        if (strcmp(tok, ";") == 0) {
+            thread[thread_len++] = OP_EXIT;
+            compiling = 0;
+            return;
+        }
+        compile_word(tok);
+        return;
+    }
+
+    if (strcmp(tok, ":") == 0) {          /* start new definition */
+        char *name = strtok(NULL, " \t\r\n");
+        if (!name) { printf("Error: : requires a name\r\n"); return; }
+        current_def_idx  = dict_len;
+        dict[dict_len++] = (word_t){ .name = strdup(name), .fn = colon_dispatch };
+        colon_ip[current_def_idx] = thread_len;
+        compiling = 1;
+        return;
+    }
+
 
     for (int i = 0; i < dict_len; i++) {
         if (strcmp(uword, dict[i].name) == 0) {

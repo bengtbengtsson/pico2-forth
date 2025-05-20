@@ -168,3 +168,13 @@ def test_divmod_signed_behavior():
     assert run_line("-10 -3 /MOD . .") == "3\n-1"   # q=3,  r=-1
     assert run_line("-9 3 /MOD . .") == "-3\n0"
     assert run_line("9 -3 /MOD . .") == "-3\n0"
+
+def test_colon_definition_square():
+    assert run_line(": SQUARE DUP * ; 5 SQUARE .") == "25"
+
+def test_colon_chain():
+    assert run_line(": INC 1 + ; : DOUBLE 2 * ; 3 INC DOUBLE .") == "8"
+
+def test_colon_with_variable():
+    assert run_line("VARIABLE x 10 x ! : GETX x @ ; GETX .") == "10"
+
