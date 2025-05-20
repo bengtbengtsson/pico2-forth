@@ -90,12 +90,25 @@ static void compile_word(const char *tok)
 }
 
 /* ---------------- runtime for colon words ----------------- */
+
+/* small helper – avoids typing the same test twice           */
+static inline int same_word(const char *a, const char *b)
+{
+    /* Fast path: identical pointers (typical for primitives),
+       Fallback: contents equal                                    */
+    return (a == b) || (strcmp(a, b) == 0);
+}
+
 static void colon_dispatch(void)
 {
     int idx = -1;
-    for (int i = 0; i < dict_len; i++)
-        if (dict[i].name == current_lookup_word) { idx = i; break; }
-    if (idx < 0) { printf("Error: colon dispatch\n"); return; }
+    for (int i = 0; i < dict_len; i++) {
+        if (same_word(dict[i].name, current_lookup_word)) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx < 0) { printf("Error: colon dispatch\r\n"); return; }
 
     int ip = colon_ip[idx];
     for (;;) {
@@ -105,11 +118,11 @@ static void colon_dispatch(void)
 
         current_lookup_word = dict[code].name;
         if (dict[code].fn) {
-            dict[code].fn();              /* primitive / constant   */
+            dict[code].fn();              /* primitive / constant */
         } else {
             /* variable   (fn == NULL) --------------------------- */
             for (int j = 0; j < var_count; j++)
-                if (strcmp(current_lookup_word, vars[j].name) == 0) {
+                if (same_word(current_lookup_word, vars[j].name)) {
                     push(vars[j].addr);
                     goto next;
                 }
@@ -118,7 +131,6 @@ static void colon_dispatch(void)
     next:;
     }
 }
-
 
 /* -------------------------------------------------------------------------
  *--- Floored division helper (ANS Forth semantics)
@@ -287,6 +299,7 @@ static void init_primitives() {
     dict[dict_len++] = (word_t){"WORDS", w_words};
 }
 
+
 // Eval
 static void eval(const char *tok) {
     char uword[WORD_BUF];
@@ -346,10 +359,42 @@ static void eval(const char *tok) {
     printf("? %s\r\n", tok);
 }
 
+static void bootstrap_phase4(void)
+{
+    const char *src[] = {
+        ": 1+ 1 + ;",  ": 1- 1 - ;",
+        ": 2+ 2 + ;",  ": 2- 2 - ;",
+        ": 2* DUP + ;",": 2/ DUP 2 / ;",
+        ": NEGATE 0 SWAP - ;",
+        ": NIP SWAP DROP ;",
+        ": TUCK SWAP OVER ;",
+        ": -ROT ROT ROT ;",
+        "4 CONSTANT CELL",
+        ": CELLS CELL * ;",
+        ": CELL+ CELL + ;",
+        "-1 CONSTANT TRUE",
+        "0 CONSTANT FALSE",
+        ": SQR DUP * ;",
+        ": CUBE DUP DUP * * ;",
+        NULL
+    };
+
+    for (int i = 0; src[i]; ++i) {
+        char line[INPUT_BUF];
+        strncpy(line, src[i], INPUT_BUF);
+        char *tok = strtok(line, " \t\r\n");
+        while (tok) {
+            eval(tok);                   /* already in core */
+            tok = strtok(NULL, " \t\r\n");
+        }
+    }
+}
+
 // REPL
 int forth_main_loop(void) {
     char input[INPUT_BUF];
     init_primitives();
+    bootstrap_phase4();
     printf("Simple Forth Interpreter - Phase 2 (Variables & Constants)\r\n");
 
     while (1) {

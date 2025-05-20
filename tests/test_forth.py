@@ -183,3 +183,56 @@ def test_words_lists_dictionary():
     # must include a few well-known entries and itself
     for token in ["+", "VARIABLE", "DUP", "WORDS"]:
         assert token in out
+
+# ======================  PHASE-4 NEW WORDS  =======================
+
+# Arithmetic helpers -------------------------------------------------
+def test_inc_and_dec():
+    assert run_line("3 1+ .") == "4"
+    assert run_line("5 1- .") == "4"
+
+def test_twice_and_half():
+    assert run_line("7 2+ .") == "9"
+    assert run_line("8 2- .") == "6"
+    assert run_line("6 2* .") == "12"
+    assert run_line("10 2/ .") == "5"
+
+def test_negate():
+    assert run_line("5 NEGATE .") == "-5"
+    assert run_line("-7 NEGATE .") == "7"
+
+# Stack-shuffle words -------------------------------------------------
+def test_stack_nip():
+    out = run_line("1 2 NIP .s")
+    assert out.startswith("<1>")
+    assert out.endswith("2")
+
+def test_stack_tuck():
+    out = run_line("10 20 TUCK .s")
+    assert out.startswith("<3>")
+    assert out.endswith("20 10 20")
+
+def test_stack_minus_rot():
+    out = run_line("1 2 3 -ROT .s")
+    assert out.startswith("<3>")
+    assert out.endswith("3 1 2")
+
+# Boolean constants --------------------------------------------------
+def test_true_false_constants():
+    assert run_line("TRUE .") == "-1"
+    assert run_line("FALSE .") == "0"
+    out = run_line("TRUE FALSE + .S")
+    assert out.startswith("<1>")
+    assert out.endswith("-1")
+
+# Cell helpers -------------------------------------------------------
+def test_cell_helpers():
+    assert run_line("CELL .") == "4"
+    assert run_line("3 CELLS .") == "12"      # 3 * 4
+    assert run_line("100 CELL+ .") == "104"   # 100 + 4
+
+# Educational math words --------------------------------------------
+def test_sqr_and_cube():
+    assert run_line("4 SQR .") == "16"
+    assert run_line("3 CUBE .") == "27"
+
