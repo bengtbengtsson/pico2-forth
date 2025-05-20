@@ -51,12 +51,40 @@ def run_line(line):
     lines = [l.strip() for l in full_output.splitlines() if l.strip()]
     cleaned = [l for l in lines if not l.startswith("ok>") and l != line and not l.startswith("Simple Forth")]
 
-    return cleaned[-1] if cleaned else ""
+    return "\n".join(cleaned) if cleaned else ""
+
+
+   # return cleaned[-1] if cleaned else ""
 
 # ========================== TESTS ===============================
 
 def test_simple_addition():
     assert run_line("1 2 + .") == "3"
+    assert run_line("0 2 + .") == "2"
+    assert run_line("0 0 + .") == "0"
+    assert run_line("-1 0 + .") == "-1"
+    assert run_line("-1 -1 + .") == "-2"
+
+def test_simple_subtraction():
+    assert run_line("1 2 - .") == "-1"
+    assert run_line("0 2 - .") == "-2"
+    assert run_line("0 0 - .") == "0"
+    assert run_line("-1 0 - .") == "-1"
+    assert run_line("-1 -1 - .") == "0"
+
+def test_simple_multiplication():
+    assert run_line("1 2 * .") == "2"
+    assert run_line("0 2 * .") == "0"
+    assert run_line("0 0 * .") == "0"
+    assert run_line("-1 0 * .") == "0"
+    assert run_line("-1 -1 * .") == "1"
+
+def test_simple_division():
+    assert run_line("1 2 / .") == "0"
+    assert run_line("0 2 / .") == "0"
+    assert run_line("0 0 /") == "Error: division by zero"
+    assert run_line("-1 0 /") == "Error: division by zero"
+    assert run_line("-1 -1 / .") == "1"
 
 def test_dup_and_dots():
     output = run_line("1 2 DUP .s")
@@ -109,4 +137,16 @@ def test_variable_definition_and_store():
 
 def test_variable_multiple():
     assert run_line("VARIABLE a VARIABLE b 77 a ! 88 b ! a @ .") == "77"
+
+def test_mod_behavior():
+    assert run_line("10 3 MOD .") == "1"
+    assert run_line("10 2 MOD .") == "0"
+    assert run_line("10 1 MOD .") == "0"
+    assert run_line("5 0 MOD") == "Error: division by zero"
+
+def test_divmod_behavior():
+    assert run_line("10 3 /MOD . .") == "3\n1"
+    assert run_line("10 2 /MOD . .") == "5\n0"
+    assert run_line("10 1 /MOD . .") == "10\n0"
+    assert run_line("5 0 /MOD") == "Error: division by zero"
 

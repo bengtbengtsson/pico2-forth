@@ -55,24 +55,65 @@ static long pop() {
 
 // Arithmetic
 static void w_add() { if (sp < 2) { printf("Error: + requires 2 items\r\n"); return; } push(pop() + pop()); }
+
 static void w_sub() { if (sp < 2) { printf("Error: - requires 2 items\r\n"); return; } long b = pop(); push(pop() - b); }
+
 static void w_mul() { if (sp < 2) { printf("Error: * requires 2 items\r\n"); return; } push(pop() * pop()); }
+
 static void w_div() {
     if (sp < 2) { printf("Error: / requires 2 items\r\n"); return; }
     long b = pop(); if (b == 0) { printf("Error: division by zero\r\n"); push(0); } else push(pop() / b);
 }
+
 static void w_dot() { if (sp < 1) { printf("Error: . requires 1 item\r\n"); return; } printf("%ld\r\n", pop()); }
+
 static void w_dot_s() {
     printf("<%d> ", sp);
     for (int i = 0; i < sp; i++) printf("%ld ", stack[i]);
     printf("\r\n");
     fflush(stdout);  // Ensure output is flushed immediately
 }
+
 static void w_dup() { if (sp < 1) { printf("Error: DUP requires 1 item\r\n"); return; } push(stack[sp - 1]); }
+
 static void w_drop() { if (sp < 1) { printf("Error: DROP requires 1 item\r\n"); return; } sp--; }
+
 static void w_swap() { if (sp < 2) { printf("Error: SWAP requires 2 items\r\n"); return; } long a = pop(), b = pop(); push(a); push(b); }
+
 static void w_over() { if (sp < 2) { printf("Error: OVER requires 2 items\r\n"); return; } push(stack[sp - 2]); }
+
 static void w_rot() { if (sp < 3) { printf("Error: ROT requires 3 items\r\n"); return; } long a = pop(), b = pop(), c = pop(); push(b); push(a); push(c); }
+
+static void w_mod() {
+    if (sp < 2) {
+        printf("Error: MOD requires 2 items\r\n");
+        return;
+    }
+    long b = stack[sp - 1];
+    if (b == 0) {
+        printf("Error: division by zero\r\n");
+        return;
+    }
+    long a = stack[sp - 2];
+    sp -= 2;
+    push(a % b);
+}
+
+static void w_divmod() {
+    if (sp < 2) {
+        printf("Error: /MOD requires 2 items\r\n");
+        return;
+    }
+    long b = stack[sp - 1];
+    if (b == 0) {
+        printf("Error: division by zero\r\n");
+        return;
+    }
+    long a = stack[sp - 2];
+    sp -= 2;
+    push(a % b); // remainder first
+    push(a / b); // then quotient
+}
 
 // Memory
 static void w_store() {
@@ -144,6 +185,8 @@ static void init_primitives() {
     dict[dict_len++] = (word_t){"@", w_fetch};
     dict[dict_len++] = (word_t){"VARIABLE", w_variable};
     dict[dict_len++] = (word_t){"CONSTANT", w_constant};
+    dict[dict_len++] = (word_t){"MOD", w_mod};
+    dict[dict_len++] = (word_t){"/MOD", w_divmod};
 }
 
 // Eval

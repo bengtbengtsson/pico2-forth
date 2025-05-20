@@ -3,12 +3,16 @@
 set -eu  # Exit on error and undefined vars
 
 DEBUG=0
+BUILD_ALL=0
 
 # Parse arguments
 for arg in "$@"; do
     case "$arg" in
         --debug)
             DEBUG=1
+            ;;
+        --all)
+            BUILD_ALL=1
             ;;
         *)
             echo "Unknown argument: $arg"
@@ -32,9 +36,12 @@ fi
 make forth_host
 cd ..
 
-# --- Pico build ---
-rm -rf build-pico
-mkdir build-pico && cd build-pico
-cmake .. -DBUILD_PICO=ON -DPICO_BOARD=pico2
-make forth_pico
+# --- Pico build (only if --all) ---
+if [ "$BUILD_ALL" -eq 1 ]; then
+    rm -rf build-pico
+    mkdir build-pico && cd build-pico
+    cmake .. -DBUILD_PICO=ON -DPICO_BOARD=pico2
+    make forth_pico
+    cd ..
+fi
 
