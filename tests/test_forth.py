@@ -178,3 +178,8 @@ def test_colon_chain():
 def test_colon_with_variable():
     assert run_line("VARIABLE x 10 x ! : GETX x @ ; GETX .") == "10"
 
+def test_words_lists_dictionary():
+    out = run_line("WORDS")
+    # must include a few well-known entries and itself
+    for token in ["+", "VARIABLE", "DUP", "WORDS"]:
+        assert token in out

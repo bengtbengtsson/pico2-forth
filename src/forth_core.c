@@ -173,6 +173,14 @@ static void w_over() { if (sp < 2) { printf("Error: OVER requires 2 items\r\n");
 
 static void w_rot() { if (sp < 3) { printf("Error: ROT requires 3 items\r\n"); return; } long a = pop(), b = pop(), c = pop(); push(b); push(a); push(c); }
 
+static void w_words(void)
+{
+    for (int i = dict_len - 1; i >= 0; i--)   /* latest → earliest */
+        printf("%s ", dict[i].name);
+    printf("\r\n");           /* final CR/LF to stay REPL-friendly */
+    fflush(stdout);
+}
+
 /* MOD ( n1 n2 -- nrem )  — remainder only */
 static void w_mod(void)
 {
@@ -276,6 +284,7 @@ static void init_primitives() {
     dict[dict_len++] = (word_t){"CONSTANT", w_constant};
     dict[dict_len++] = (word_t){"MOD", w_mod};
     dict[dict_len++] = (word_t){"/MOD", w_divmod};
+    dict[dict_len++] = (word_t){"WORDS", w_words};
 }
 
 // Eval
