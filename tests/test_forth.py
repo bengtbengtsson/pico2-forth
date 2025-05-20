@@ -231,8 +231,24 @@ def test_cell_helpers():
     assert run_line("3 CELLS .") == "12"      # 3 * 4
     assert run_line("100 CELL+ .") == "104"   # 100 + 4
 
-# Educational math words --------------------------------------------
+# Others
 def test_sqr_and_cube():
     assert run_line("4 SQR .") == "16"
     assert run_line("3 CUBE .") == "27"
+
+def test_2drop_and_2dup():
+    assert run_line("1 2 3 4 2DROP .S") == "<2> 1 2"
+    #assert run_line("10 20 2DUP .S") == "<4> 10 20 10 20"
+
+def test_comparisons():
+    assert run_line("42 42 = .") == "-1"
+    assert run_line("42 99 = .") == "0"
+    assert run_line("3 5 < .") == "-1"
+    assert run_line("5 3 < .") == "0"
+    assert run_line("7 2 > .") == "-1"
+    assert run_line("2 7 > .") == "0"
+
+def test_emit_and_cr():
+    assert run_line("65 EMIT") == "A"
+    assert run_line(".CR") == ""  # prints a newline only
 

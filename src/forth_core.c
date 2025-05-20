@@ -276,6 +276,18 @@ static void w_constant() {
     dict[dict_len++] = (word_t){ .name = consts[const_count - 1].name, .fn = const_dispatcher };
 }
 
+static void w_emit() {
+    if (sp < 1) { printf("Error: EMIT needs 1 item\n"); return; }
+    putchar((char)pop());
+}
+
+static void w_equal() { if (sp < 2) { printf("Error: = needs 2\n"); return; } push(pop() == pop() ? -1 : 0); }
+
+static void w_less()  { if (sp < 2) { printf("Error: < needs 2\n"); return; } long b = pop(); push(pop() < b ? -1 : 0); }
+
+static void w_greater(){ if (sp < 2) { printf("Error: > needs 2\n"); return; } long b = pop(); push(pop() > b ? -1 : 0); }
+
+
 // Core dictionary
 static void init_primitives() {
     dict[dict_len++] = (word_t){"+", w_add};
@@ -297,6 +309,10 @@ static void init_primitives() {
     dict[dict_len++] = (word_t){"MOD", w_mod};
     dict[dict_len++] = (word_t){"/MOD", w_divmod};
     dict[dict_len++] = (word_t){"WORDS", w_words};
+    dict[dict_len++] = (word_t){"EMIT", w_emit};
+    dict[dict_len++] = (word_t){"=", w_equal};
+    dict[dict_len++] = (word_t){"<", w_less};
+    dict[dict_len++] = (word_t){">", w_greater};
 }
 
 
@@ -376,6 +392,10 @@ static void bootstrap_phase4(void)
         "0 CONSTANT FALSE",
         ": SQR DUP * ;",
         ": CUBE DUP DUP * * ;",
+        ": .CR 13 EMIT 10 EMIT ;",
+        ": 2DROP DROP DROP ;",
+        ": 2DUP OVER OVER ;",
+
         NULL
     };
 
