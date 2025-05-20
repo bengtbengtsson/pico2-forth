@@ -2,9 +2,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+
 #ifdef FORTH_DEBUG
 #include <assert.h>
 #endif
+
 #include "forth_core.h"
 
 #define STACK_SIZE 64
@@ -13,7 +15,7 @@
 #define MEM_SIZE 1024
 #define VAR_LIMIT 32
 #define CONST_LIMIT 32
-#define VAR_BASE 100
+#define VAR_BASE 100 /* first free RAM-cell for VARIABLES */
 
 static long stack[STACK_SIZE];
 static int sp = 0;
@@ -53,6 +55,28 @@ static long pop() {
     return 0;
 }
 
+/* -------------------------------------------------------------------------
+ *--- Floored division helper (ANS Forth semantics)
+ *-------------------------------------------------------------------------*/
+static inline void floored_divmod(long a, long b, long *q, long *r)
+/*  Ensures:
+ *      a = b*q + r
+ *      0 ≤ |r| < |b|
+ *      sign(r) == sign(b)
+ */
+{
+    long q0 = a / b;          /* C truncates toward zero            */
+    long r0 = a % b;
+
+    /* If remainder sign differs from divisor sign, adjust */
+    if (r0 != 0 && ((r0 < 0) != (b < 0))) {
+        r0 += b;
+        q0 -= 1;
+    }
+    *q = q0;
+    *r = r0;
+}
+
 // Arithmetic
 static void w_add() { if (sp < 2) { printf("Error: + requires 2 items\r\n"); return; } push(pop() + pop()); }
 
@@ -84,35 +108,35 @@ static void w_over() { if (sp < 2) { printf("Error: OVER requires 2 items\r\n");
 
 static void w_rot() { if (sp < 3) { printf("Error: ROT requires 3 items\r\n"); return; } long a = pop(), b = pop(), c = pop(); push(b); push(a); push(c); }
 
-static void w_mod() {
-    if (sp < 2) {
-        printf("Error: MOD requires 2 items\r\n");
-        return;
-    }
-    long b = stack[sp - 1];
-    if (b == 0) {
-        printf("Error: division by zero\r\n");
-        return;
-    }
-    long a = stack[sp - 2];
-    sp -= 2;
-    push(a % b);
+/* MOD ( n1 n2 -- nrem )  — remainder only */
+static void w_mod(void)
+{
+    if (sp < 2) { printf("Error: MOD requires 2 items\r\n"); return; }
+
+    long b = pop();           /* divisor  */
+    long a = pop();           /* dividend */
+
+    if (b == 0) { printf("Error: division by zero\r\n"); return; }
+
+    long q, r;
+    floored_divmod(a, b, &q, &r);
+    push(r);                  /* leave just the remainder */
 }
 
-static void w_divmod() {
-    if (sp < 2) {
-        printf("Error: /MOD requires 2 items\r\n");
-        return;
-    }
-    long b = stack[sp - 1];
-    if (b == 0) {
-        printf("Error: division by zero\r\n");
-        return;
-    }
-    long a = stack[sp - 2];
-    sp -= 2;
-    push(a % b); // remainder first
-    push(a / b); // then quotient
+/* /MOD ( n1 n2 -- nrem nquot ) */
+static void w_divmod(void)
+{
+    if (sp < 2) { printf("Error: /MOD requires 2 items\r\n"); return; }
+
+    long b = pop();           /* divisor  */
+    long a = pop();           /* dividend */
+
+    if (b == 0) { printf("Error: division by zero\r\n"); return; }
+
+    long q, r;
+    floored_divmod(a, b, &q, &r);
+    push(r);                  /* remainder  (lower on stack) */
+    push(q);                  /* quotient   (top-of-stack)   */
 }
 
 // Memory

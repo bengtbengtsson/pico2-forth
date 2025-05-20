@@ -150,3 +150,21 @@ def test_divmod_behavior():
     assert run_line("10 1 /MOD . .") == "10\n0"
     assert run_line("5 0 /MOD") == "Error: division by zero"
 
+def test_mod_signed_behavior():
+    """Remainder must have the sign of the divisor (ANS floored semantics)."""
+    assert run_line("-10 3 MOD .") == "2"      #  -10 = 3 * (-4) + 2
+    assert run_line("10 -3 MOD .") == "-2"     #   10 = (-3) * (-4) + (-2)
+    assert run_line("-10 -3 MOD .") == "-1"    #  -10 = (-3) * 3 + (-1)
+    assert run_line("-9 3 MOD .") == "0"
+    assert run_line("9 -3 MOD .") == "0"
+
+def test_divmod_signed_behavior():
+    """
+    /MOD leaves remainder (lower) then quotient (TOS).
+    With . . we therefore expect "quotient\\nremainder".
+    """
+    assert run_line("-10 3 /MOD . .") == "-4\n2"    # q=-4, r=2
+    assert run_line("10 -3 /MOD . .") == "-4\n-2"   # q=-4, r=-2
+    assert run_line("-10 -3 /MOD . .") == "3\n-1"   # q=3,  r=-1
+    assert run_line("-9 3 /MOD . .") == "-3\n0"
+    assert run_line("9 -3 /MOD . .") == "-3\n0"
