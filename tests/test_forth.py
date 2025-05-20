@@ -238,7 +238,7 @@ def test_sqr_and_cube():
 
 def test_2drop_and_2dup():
     assert run_line("1 2 3 4 2DROP .S") == "<2> 1 2"
-    #assert run_line("10 20 2DUP .S") == "<4> 10 20 10 20"
+    assert run_line("10 20 2DUP .S") == "<4> 10 20 10 20"
 
 def test_comparisons():
     assert run_line("42 42 = .") == "-1"
