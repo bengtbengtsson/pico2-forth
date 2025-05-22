@@ -21,8 +21,11 @@ for arg in "$@"; do
     esac
 done
 
-# --- Host build ---
+# --- remove old builds
 rm -rf build-host
+rm -rf build-pico
+
+# --- Host build ---
 mkdir build-host
 cd build-host
 

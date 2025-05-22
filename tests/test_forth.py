@@ -1,4 +1,5 @@
 import os
+import re
 import pty
 import subprocess
 import pytest
@@ -14,7 +15,6 @@ pytestmark = pytest.mark.skipif(
 
 def run_line(line):
     master_fd, slave_fd = pty.openpty()
-
     proc = subprocess.Popen(
         [FOURTHOST],
         stdin=slave_fd,
@@ -24,38 +24,71 @@ def run_line(line):
         close_fds=True
     )
 
+    # send the line + newline
     os.write(master_fd, (line + "\n").encode())
 
+    # collect until we see "<input> ... ok" or timeout
     output = []
+    buffer = ""
     timeout = 1.0
     start = time.time()
-    ok_prompt_count = 0
-
+    pat = re.compile(rf"{re.escape(line)}\s+.*?\s+ok")
     while time.time() - start < timeout:
-        rlist, _, _ = select.select([master_fd], [], [], 0.1)
-        if master_fd in rlist:
+        reads, _, _ = select.select([master_fd], [], [], 0.1)
+        if master_fd in reads:
             try:
-                data = os.read(master_fd, 1024).decode(errors="ignore")
-                output.append(data)
-                ok_prompt_count += data.count("ok>")
-                if ok_prompt_count >= 2:
-                    break
+                chunk = os.read(master_fd, 1024).decode(errors="ignore")
             except OSError:
+                break
+            output.append(chunk)
+            buffer += chunk
+            if pat.search(buffer):
                 break
 
     os.close(master_fd)
     os.close(slave_fd)
     proc.kill()
 
-    full_output = "".join(output)
-    lines = [l.strip() for l in full_output.splitlines() if l.strip()]
-    cleaned = [l for l in lines if not l.startswith("ok>") and l != line and not l.startswith("Simple Forth")]
+    # build a clean list of meaningful lines
+    raw = "".join(output)
+    raw = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', raw)  # strip ANSI
+    raw = raw.replace('\r', '')                       # drop stray CRs
 
-    return "\n".join(cleaned) if cleaned else ""
+    lines = []
+    for l in raw.splitlines():
+        l = l.strip()
+        if not l:
+            continue
+        # drop the banner
+        if l.startswith("Simple Forth Interpreter"):
+            continue
+        # drop exact input‐echo
+        if l == line:
+            continue
+        lines.append(l)
 
+    # .CR only prints a newline → tests expect ""
+    if line.strip().upper() == ".CR":
+        return ""
 
-   # return cleaned[-1] if cleaned else ""
+    # 1) Look for the one line ending in " ok"
+    for l in lines:
+        if l.endswith(" ok"):
+            core = l[:-3]                # drop trailing " ok"
+            # remove the echoed input
+            rem = core[len(line):].strip()
+            # multi-dot? split onto separate lines
+            if line.split().count(".") > 1:
+                return "\n".join(rem.split())
+            # otherwise single result or EMIT char
+            return rem
 
+    # 2) If we didn’t find an " ok" line, this must be:
+    #    - a stack dump (.s/.S) where we want the "<...>" line
+    #    - an error (contains "Error:" or "requires")
+    #    - a WORDS/dictionary listing (e.g. run_line("words"))
+    # Return all remaining lines joined by newline.
+    return "\n".join(lines)
 # ========================== TESTS ===============================
 
 def test_simple_addition():

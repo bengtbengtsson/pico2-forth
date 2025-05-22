@@ -217,7 +217,7 @@ static void w_dot() {
     printf("Error: . requires 1 item\r\n");
     return;
   }
-  printf("%ld\r\n", pop());
+  printf(" %ld", pop());
 }
 
 static void w_dot_s() {
@@ -558,43 +558,47 @@ static void bootstrap_phase4(void) {
 // REPL
 int forth_main_loop(void) {
   char input[INPUT_BUF];
+
   init_primitives();
   bootstrap_phase4();
-  printf("Simple Forth Interpreter - Phase 2 (Variables & Constants)\r\n");
+  printf("Simple Forth Interpreter\r\n");
 
   while (1) {
-    printf("ok> ");
+    /* prompt */
     fflush(stdout);
+
     int len = 0;
     while (1) {
       int c = getchar();
       if (c < 0)
         continue;
       if (c == '\r' || c == '\n') {
-        putchar('\r');
-        putchar('\n');
         break;
       } else if (c == 0x7f || c == '\b') {
         if (len > 0) {
-          putchar('\b');
-          putchar(' ');
-          putchar('\b');
           len--;
         }
       } else if (len < INPUT_BUF - 1) {
-        putchar(c);
-        fflush(stdout);
         input[len++] = (char)c;
       }
     }
     input[len] = '\0';
 
+   /* move cursor up one line and back to start */
+        printf("\033[F\r");
+
+    /* reprint prompt + input  (no extra newline) */
+    printf("%s", input);
+
+    /* evaluate each token */
     char *tok = strtok(input, " \t");
     while (tok) {
       eval(tok);
       tok = strtok(NULL, " \t");
     }
-    printf("\r\n");
+
+    /* w_dot() prints " %ld", so we just tack on " ok\n" */
+    printf(" ok\n");
     fflush(stdout);
   }
   return 0;
