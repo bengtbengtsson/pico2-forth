@@ -27,12 +27,12 @@ def run_line(line):
     # send the line + newline
     os.write(master_fd, (line + "\n").encode())
 
-    # collect until we see "<input> ... ok" or timeout
+    # collect until "<input>[ ]<anything> ok" or timeout
     output = []
     buffer = ""
     timeout = 1.0
     start = time.time()
-    pat = re.compile(rf"{re.escape(line)}\s+.*?\s+ok")
+    pat = re.compile(rf"{re.escape(line)}\s*.*?\s+ok")     # ← allow zero spaces
     while time.time() - start < timeout:
         reads, _, _ = select.select([master_fd], [], [], 0.1)
         if master_fd in reads:
@@ -52,7 +52,7 @@ def run_line(line):
     # clean raw output
     raw = "".join(output)
     raw = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', raw)  # strip ANSI
-    raw = raw.replace('\r', '')                       # drop carriage returns
+    raw = raw.replace('\r', '')                      # drop carriage returns
 
     # filter out blanks, banner, echoed input, and lone "ok"
     lines = []
@@ -70,21 +70,22 @@ def run_line(line):
     if line.strip().upper() == ".CR":
         return ""
 
-    # 1) normal result: "<input>  <result> ok"
+    # 1) normal result (incl. EMIT): "<input>[ ]<result> ok"
     for l in lines:
-        if l.startswith(line + " ") and l.endswith(" ok"):
-            core = l[:-3]  # drop trailing " ok"
-            rem = core[len(line):].strip()
-            # multi-dot → split onto separate lines
+        if l.startswith(line) and l.endswith(" ok"):
+            core = l[:-3]                # drop trailing " ok"
+            rem = core[len(line):].lstrip()  # tolerate missing space
+            # multi-dot (. .)  → split onto separate lines
             if line.split().count(".") > 1:
                 return "\n".join(rem.split())
             return rem
 
-    # 2) stack‐dump (.s/.S): return the "<...>" line
+    # 2) stack-dump (.s/.S): extract "<…>" even when glued to echo
     if ".s" in line.lower():
         for l in lines:
-            if l.startswith("<"):
-                return l
+            m = re.search(r"<\d+>.*", l)
+            if m:
+                return m.group(0).strip()
 
     # 3) error messages
     for l in lines:
@@ -99,6 +100,7 @@ def run_line(line):
     if lines:
         return lines[0]
     return ""
+
 
 # ========================== TESTS ===============================
 
