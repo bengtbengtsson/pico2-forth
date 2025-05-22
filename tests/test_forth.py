@@ -49,46 +49,57 @@ def run_line(line):
     os.close(slave_fd)
     proc.kill()
 
-    # build a clean list of meaningful lines
+    # clean raw output
     raw = "".join(output)
     raw = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', raw)  # strip ANSI
-    raw = raw.replace('\r', '')                       # drop stray CRs
+    raw = raw.replace('\r', '')                       # drop carriage returns
 
+    # filter out blanks, banner, echoed input, and lone "ok"
     lines = []
     for l in raw.splitlines():
-        l = l.strip()
-        if not l:
+        s = l.strip()
+        if not s:
             continue
-        # drop the banner
-        if l.startswith("Simple Forth Interpreter"):
+        if s.startswith("Simple Forth Interpreter"):
             continue
-        # drop exact input‐echo
-        if l == line:
+        if s == line or s == "ok":
             continue
-        lines.append(l)
+        lines.append(s)
 
-    # .CR only prints a newline → tests expect ""
+    # .CR only emits a newline → tests expect ""
     if line.strip().upper() == ".CR":
         return ""
 
-    # 1) Look for the one line ending in " ok"
+    # 1) normal result: "<input>  <result> ok"
     for l in lines:
-        if l.endswith(" ok"):
-            core = l[:-3]                # drop trailing " ok"
-            # remove the echoed input
+        if l.startswith(line + " ") and l.endswith(" ok"):
+            core = l[:-3]  # drop trailing " ok"
             rem = core[len(line):].strip()
-            # multi-dot? split onto separate lines
+            # multi-dot → split onto separate lines
             if line.split().count(".") > 1:
                 return "\n".join(rem.split())
-            # otherwise single result or EMIT char
             return rem
 
-    # 2) If we didn’t find an " ok" line, this must be:
-    #    - a stack dump (.s/.S) where we want the "<...>" line
-    #    - an error (contains "Error:" or "requires")
-    #    - a WORDS/dictionary listing (e.g. run_line("words"))
-    # Return all remaining lines joined by newline.
-    return "\n".join(lines)
+    # 2) stack‐dump (.s/.S): return the "<...>" line
+    if ".s" in line.lower():
+        for l in lines:
+            if l.startswith("<"):
+                return l
+
+    # 3) error messages
+    for l in lines:
+        if "Error:" in l:
+            idx = l.find("Error:")
+            return l[idx:].strip()
+    for l in lines:
+        if "requires" in l or "invalid" in l:
+            return l
+
+    # 4) fallback: first remaining line (e.g. WORDS listing)
+    if lines:
+        return lines[0]
+    return ""
+
 # ========================== TESTS ===============================
 
 def test_simple_addition():
